@@ -1,0 +1,31 @@
+import boto3
+import datetime
+
+# Set the number of days before access keys expire
+expiration_days = 180
+
+# Connect to the IAM service
+client = boto3.client('iam')
+
+# Get a list of all users
+response = client.list_users()
+
+# Iterate through the list of users
+for user in response['Users']:
+    # Get the access keys for the user
+    access_keys = client.list_access_keys(UserName=user['UserName'])
+
+    # Iterate through the access keys
+    for key in access_keys['AccessKeyMetadata']:
+        # Get the creation date of the key
+        creation_date = key['CreateDate']
+
+        # Calculate the number of days since the key was created
+        days_since_creation = (datetime.datetime.now() - creation_date).days
+
+        # Check if the key has been active for longer than the expiration period
+        if days_since_creation > expiration_days:
+            # Rotate the access key
+            client.create_access_key(UserName=user['UserName'])
+            client.delete_access_key(UserName=user['UserName'], AccessKeyId=key['AccessKeyId'])
+            print(f"Access key for user {user['UserName']} has been rotated.")
