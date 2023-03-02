@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+import boto3
+import csv
+
+# Create an IAM client
+iam = boto3.client('iam')
+
+# Create a CSV file to store the output
+csv_file = open('user_groups_permissions.csv', 'w')
+csv_writer = csv.writer(csv_file)
+csv_writer.writerow(['Group Name', 'User Name', 'Permission'])
+
+# Get all user groups
+groups = iam.list_groups()['Groups']
+
+# Iterate through each group
+for group in groups:
+    group_name = group['GroupName']
+
+    # Get all users in the group
+    users = iam.get_group(GroupName=group_name)['Users']
+
+    # Get all permissions associated with the group
+    policies = iam.list_attached_group_policies(GroupName=group_name)['AttachedPolicies']
+
+    # Create a list to store the user names
+    user_names = []
+
+    # Iterate through each user
+    for user in users:
+        user_name = user['UserName']
+        user_names.append(user_name)
+
+    # Join the list of user names into a comma separated string
+    user_names_str = ','.join(user_names)
+
+    # Iterate through each policy
+    for policy in policies:
+        policy_name = policy['PolicyName']
+
+        # Write the data to the CSV file
+        csv_writer.writerow([group_name, user_names_str, policy_name])
+
+    # If the group has no associated policies, write an empty row
+    if not policies:
+        csv_writer.writerow([group_name, user_names_str, ''])
+
+# Close the CSV file
+csv_file.close()
+ 
+
