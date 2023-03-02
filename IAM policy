@@ -1,0 +1,49 @@
+
+#!/usr/bin/env python
+
+import boto3
+import csv
+
+# Create boto3 client
+session = boto3.Session()
+iam_client = session.client('iam')
+
+# Create a CSV file
+csv_file = open('iam_roles_and_policies.csv', 'w')
+csv_writer = csv.writer(csv_file)
+
+# Write CSV headers
+csv_writer.writerow(['role', 'policies', 'last used'])
+
+# Get all IAM roles
+paginator = iam_client.get_paginator('list_roles')
+
+# Iterate over all pages of IAM roles
+for page in paginator.paginate():
+    for role in page['Roles']:
+        role_name = role['RoleName']
+        print(role_name)
+    
+        # Get associated policies
+        policies_response = iam_client.list_attached_role_policies(
+            RoleName=role_name
+        )
+
+        attached_policies = []
+        for policy in policies_response['AttachedPolicies']:
+            attached_policies.append(policy['PolicyName'])
+        policies = ','.join(attached_policies)
+
+        # Get last used
+        try:
+            last_used_response = iam_client.get_role_last_used(
+                RoleName=role_name
+            )
+            last_used = last_used_response['RoleLastUsed']['LastUsedDate']
+        except:
+            last_used = 'Never Used'
+
+        # Write the data to CSV
+        csv_writer.writerow([role_name, policies, last_used])
+
+csv_file.close()
